@@ -4,17 +4,16 @@
 #include <Adafruit_GFX.h>
 
 
-
 byte image[]  = {
     
-   0x77, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-   0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-   0x0F, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-   0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     
      };    
     
@@ -26,12 +25,18 @@ byte image[]  = {
 
 #define BIT_S(var,b) ((var&(1<<b))?1:0)
 
+// clear bit
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #endif
+
+// set bit
 #ifndef sbi
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 #endif
+
+
+//Adafruit_GFX matrix = Adafruit_GFX(64,8);
 
 uint8_t myrandom(){
   static uint16_t muh = 0xAA;
@@ -43,11 +48,29 @@ uint8_t myrandom(){
 }
 
 
+void set_pixel(int x, int y,int color ){
+
+byte b_index , mybit;
 
 
-#define NUMPLANE 1
-#define NUM_ROWS 8
-#define LINEBYTES 8
+b_index = x/8 + y*8;
+mybit = x % 8;
+
+if (color > 0)
+  sbi(image[b_index], mybit);
+else
+  cbi(image[b_index], mybit);
+ 
+
+//Serial.println(b_index);
+//Serial.println(mybit);
+//Serial.println(image[b_index]);
+//Serial.println("-----");
+
+}
+
+
+
 
 
 void shiftbyte(byte dat)
@@ -81,6 +104,7 @@ void show_frame()
   for (line=8;line>=0;line--)
   {
     //for(j=7;j>=0;j--)
+    // 8 bytes on each line
     for(j=0;j<8;j++)
     { 
      //val=image[offset]-1; //show inverted
@@ -102,31 +126,61 @@ void setup(){
  pinMode(DATA, OUTPUT);
  pinMode(HIDE, OUTPUT);
  pinMode(TAKT, OUTPUT);
-// delay(1000);
- //allon();
- //fillpattern(0xFF);
-// delay(1000);
-// fillpattern(0x00);
-// delay(1000);
- //fadeout();
+
 }
- int zeit=0;
-int offset = 0;
 
-
-
-
+int zeit=0,x,y;
 void loop() {  
    
-  		//for ever
+  	//for ever
+
   
-    show_frame();
-   delay(10);
+ for (y=0;y<8;y++){
+  //fill from left to right   
+  for(x=0;x<64;x++){
+    set_pixel(x,y,255);
+
+     show_frame();
+    delay(10);
+  }
+ }
+ 
+ for(x=0;x<64;x++){
+   //clear from top to bottom
+   for (y=0;y<8;y++){
+ 
+    set_pixel(x,y,0);
+
+     show_frame();
+    delay(10);
+  }
+ }
+
+ for (y=0;y<8;y++){
+  //fill from left to right   
+  for(x=0;x<64;x++){
+    set_pixel(x,y,255);
+
+     show_frame();
+   
+  }
+ }
+  delay(1000);
+ for(x=0;x<64;x++){
+   //clear from top to bottom
+   for (y=0;y<8;y++){
+ 
+    set_pixel(x,y,0);
+
+     show_frame();
+   
+  }
+ }
+  delay(1000);
+  
     zeit++;
-    image[7]=zeit;
-    
-     
-  
+    //image[7]=zeit;
+
   } // for ever
     
 //main

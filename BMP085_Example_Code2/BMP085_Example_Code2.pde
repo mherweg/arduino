@@ -3,36 +3,20 @@
   SparkFun Electronics
   date: 1/18/11
   license: CC BY-SA v3.0 - http://creativecommons.org/licenses/by-sa/3.0/
-  
-  Get pressure and temperature from the BMP085 and calculate altitude.
+    Get pressure and temperature from the BMP085 and calculate altitude.
   Serial.print it out at 9600 baud to serial monitor.
-
-  Update (7/19/11): I've heard folks may be encountering issues
+Update (7/19/11): I've heard folks may be encountering issues
   with this code, who're running an Arduino at 8MHz. If you're 
   using an Arduino Pro 3.3V/8MHz, or the like, you may need to 
   increase some of the delays in the bmp085ReadUP and 
   bmp085ReadUT functions.
-  
-  
-   The LCD circuit:
- * LCD RS pin to digital pin 12
- * LCD Enable pin to digital pin 11
- * LCD D4 pin to digital pin 5
- * LCD D5 pin to digital pin 4
- * LCD D6 pin to digital pin 3
- * LCD D7 pin to digital pin 2
- * LCD R/W pin to ground
- * 10K resistor:
- * ends to +5V and ground
- * wiper to LCD VO pin (pin 3)
-*/
-
+  */
 #include <Wire.h>
-#include <LiquidCrystal.h>
+#include <EEPROM.h>
+// the current address in the EEPROM (i.e. which byte
+// we're going to write to next)
+int addr = 0;
 #define BMP085_ADDRESS 0x77  // I2C address of BMP085
-
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-
 // oversampling setting
 // 0 = ultra low power
 // 1 = standard
@@ -64,7 +48,7 @@ long minpressure;
 long maxpressure;
 long height;
 long maxheight;
-
+byte val,rval;
 
 long bmp085_get_height_cm(long abs_pa_pressure, long pa_pressure_nn)
 {
@@ -77,11 +61,10 @@ long bmp085_get_height_cm(long abs_pa_pressure, long pa_pressure_nn)
 
 void setup()
 {
- 
+  pinMode(13, OUTPUT);   
   Wire.begin();
-   lcd.begin(16, 2);
-  // Print a message to the LCD.
- // lcd.print("calibration");
+  Serial.begin(9600);
+  Serial.println("calibration");
   bmp085Calibration();
   temperature = bmp085GetTemperature(bmp085ReadUT());
     delay(1000);
@@ -94,23 +77,22 @@ void setup()
 
 void loop()
 {
+  
+
   temperature = bmp085GetTemperature(bmp085ReadUT());
   pressure = bmp085GetPressure(bmp085ReadUP());
   
-  height = bmp085_get_height_cm(pressure,maxpressure);
-  height = height/100;
+  height = bmp085_get_height_cm(pressure,maxpressure)  / 100;
+  val = (byte)height;
   
-  lcd.setCursor(0, 0); 
-  lcd.print(height, DEC);
-  lcd.print("m ");
-  lcd.setCursor(7, 0); 
-  lcd.print(maxheight, DEC);
-  lcd.print("m   ");
-  lcd.setCursor(0, 1); 
-  lcd.print(minpressure, DEC);
-  lcd.print(" ");
-  lcd.print(maxpressure, DEC);
-  lcd.print("Pa ");
+ /* Serial.print(maxheight, DEC);
+  Serial.print("m   ");
+ 
+  Serial.print(minpressure, DEC);
+  Serial.print(" ");
+  Serial.print(maxpressure, DEC);
+  Serial.println("Pa ");
+  */
   
    if (pressure < minpressure)
   {
@@ -121,19 +103,36 @@ void loop()
     maxpressure = pressure;
   } 
  
-  
-    if (height > maxheight)
+  if (height > maxheight)
   {
     maxheight = height;
+    EEPROM.write(511, val);
   } 
- 
- 
- 
- 
- 
-  delay(1000);
   
   
+   if (addr < 10)
+   {
+      Serial.print("write: ");
+      Serial.println(val, DEC);
+     EEPROM.write(addr, val);
+     addr++;
+   }
+   if (addr == 10)
+   {
+     for (addr=0; addr<10; addr++)
+     {
+      rval = EEPROM.read(addr);
+      Serial.print(addr);
+      Serial.print("\t");
+      Serial.println(rval, DEC);
+     }
+      addr=0;
+   }
+ 
+  digitalWrite(13, LOW);
+  delay(500);
+  digitalWrite(13, HIGH);
+  delay(500);
 }
 
 // Stores all of the bmp085's calibration values into global variables

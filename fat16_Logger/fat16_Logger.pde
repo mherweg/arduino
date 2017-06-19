@@ -4,6 +4,7 @@ uint8_t sensorCount = 3; //number of analog pins to log
 
 #include <Fat16.h>
 #include <Fat16util.h>
+#include <LiquidCrystal.h>
 
 // macros to use PSTR
 #define putstring(str) SerialPrint_P(PSTR(str))
@@ -17,13 +18,15 @@ Fat16 f;
 
 
 // set the  RX_BUFFER_SIZE to 32!
-#define BUFFSIZE 40         
+#define BUFFSIZE 32         
 char buffer[BUFFSIZE];      
 
 
 uint8_t bufferidx = 0;
-uint32_t tmp;
+uint32_t tmp,blockcount = 0;
 uint8_t i = 0;
+
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 
 // blink out an error code
 void error(uint8_t errno) {
@@ -46,19 +49,25 @@ void error(uint8_t errno) {
 void setup()                    // run once, when the sketch starts
 {
   Serial.begin(2400);
-//  putstring_nl("GPSlogger");
+
+  lcd.begin(16, 2);
+  // Print a message to the LCD.
+  //lcd.print("hello laserman!");
+
   pinMode(led1Pin, OUTPUT);      // sets the digital pin as output
   pinMode(led2Pin, OUTPUT);      // sets the digital pin as output
  
   if (!card.init()) {
-  //  putstring_nl("Card init. failed!"); 
+     lcd.setCursor(0, 1);
+     lcd.print("Card init failed"); 
     error(1);
   }
   if (!Fat16::init(&card)) {
-  //  putstring_nl("No partition!"); 
+     lcd.setCursor(0, 1);
+     lcd.print("No partition!"); 
     error(2);
   }
-  strcpy(buffer, "GPSLOG00.CSV");
+  strcpy(buffer, "GPSLOG00.TXT");
   for (i = 0; i < 100; i++) {
     buffer[6] = '0' + i/10;
     buffer[7] = '0' + i%10;
@@ -67,24 +76,30 @@ void setup()                    // run once, when the sketch starts
   }
   
   if(!f.isOpen()) {
-  //  putstring("couldnt create "); Serial.println(buffer);
+     lcd.setCursor(0, 1);
+     lcd.print("couldnt create"); 
+  //Serial.println(buffer);
     error(3);
   }
  // putstring("writing to "); Serial.println(buffer);
- // putstring_nl("ready!");
+   lcd.setCursor(0, 0);
+   lcd.print("ready!");
 
   // write header
-  if (sensorCount > 6) sensorCount = 6;
+ 
   strncpy_P(buffer, PSTR("reboot"), 24 + 6*sensorCount);
   Serial.println(buffer);
   // clear write error
   f.writeError = false;
   f.println(buffer);
   if (f.writeError || !f.sync()) {
-   // putstring_nl("can't write header!");
+    lcd.setCursor(0, 1);
+   lcd.print("can't write header!");
     error(4);
   }
   
+  lcd.autoscroll();
+  lcd.setCursor(16,1);
  // delay(1000);
 
  //  putstring("\r\n");
@@ -98,7 +113,9 @@ void loop()                     // run over and over again
   // read one 'line'
   if (Serial.available()) {
     c = Serial.read();
-    
+    //lcd.setCursor(15, 0);
+    lcd.write(c);
+   
     buffer[bufferidx] = c;
     
       buffer[bufferidx+1] = 0; // terminate it
@@ -112,15 +129,19 @@ void loop()                     // run over and over again
   }
   
     if (bufferidx == BUFFSIZE-1) {
-       Serial.print('!', BYTE);
-       
+              
          f.print(buffer);
          if (f.writeError || !f.sync()) {
-        // putstring_nl("can't write to card");
+           lcd.setCursor(0, 1);
+           lcd.print("can't write to card");
            error(4);
          }
-      // putstring_nl(" ok ");
+       lcd.setCursor(0, 0);
+       Serial.print(blockcount,DEC);
+       
+       blockcount++;
        bufferidx = 0;
+       lcd.clear();
     }
   
 }
